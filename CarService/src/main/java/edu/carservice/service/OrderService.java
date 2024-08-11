@@ -3,42 +3,58 @@ package edu.carservice.service;
 import edu.carservice.model.Car;
 import edu.carservice.model.Order;
 import edu.carservice.model.User;
+import edu.carservice.repository.OrderRepository;
+import edu.carservice.util.ConnectionPool;
 import edu.carservice.util.OrderCategory;
 import edu.carservice.util.OrderState;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.List;
 
 public class OrderService {
-    private static final ArrayList<Order> orders = new ArrayList<Order>();
-    private static final HashSet<Car> ordered = new HashSet<>();
 
-    public void addBuyOrder(User user, Car car) throws IOException {
-        if (ordered.contains(car)) throw new IOException("Car already ordered.");
-        orders.add(new Order(user, car, OrderState.CREATED, OrderCategory.BUY));
+    OrderRepository orderRepository = new OrderRepository(ConnectionPool.getDataSource());
+
+    public void addBuyOrder(long userId, long carId) throws IOException {
+        if (orderRepository.existsByCar(carId)) throw new IOException("Car already ordered.");
+        orderRepository.save(new Order(null, userId, carId, OrderState.CREATED, OrderCategory.BUY));
     }
 
-    public void addServiceOrder(User user, Car car) throws IOException {
-        if (ordered.contains(car)) throw new IOException("Car already ordered.");
-        orders.add(new Order(user, car, OrderState.CREATED, OrderCategory.SERVICE));
+    public void addServiceOrder(long userId, long carId) throws IOException {
+        if (orderRepository.existsByCar(carId)) throw new IOException("Car already ordered.");
+        orderRepository.save(new Order(null, userId, carId, OrderState.CREATED, OrderCategory.SERVICE));
     }
 
     public void displayOrders() {
-        for (int i = 0; i < orders.size(); i++) {
-            System.out.println(i + " - " + orders.get(i));
-        }
+        orderRepository.findAll().forEach(System.out::println);
     }
 
-    public Order getOrder(int index) {
-        return orders.get(index);
+    public Order getOrder(long id) {
+        return orderRepository.findById(id);
     }
 
-    public ArrayList<Order> getOrders() {
-        return orders;
+    public List<Order> getOrders() {
+        return orderRepository.findAll();
     }
 
-    public void setOrderState(int index, OrderState state) {
-        orders.get(index).setState(state);
+    public void setOrderState(long id, OrderState state) {
+        Order order = orderRepository.findById(id);
+        order.setState(state);
+        orderRepository.update(order);
+    }
+
+    public void filterByUser(User user) {
+        List<Order> orders = getOrders();
+        orders.stream().filter(e -> e.getUserId().equals(user.getId())).forEach(System.out::println);
+    }
+
+    public void filterByCar(Car car) {
+        List<Order> orders = getOrders();
+        orders.stream().filter(e -> e.getCarId().equals(car.getId())).forEach(System.out::println);
+    }
+
+    public void filterByState(OrderState state) {
+        List<Order> orders = getOrders();
+        orders.stream().filter(e -> e.getState().equals(state)).forEach(System.out::println);
     }
 }

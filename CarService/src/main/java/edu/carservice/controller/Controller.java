@@ -4,33 +4,104 @@ import edu.carservice.model.Car;
 import edu.carservice.model.User;
 import edu.carservice.service.*;
 import edu.carservice.util.*;
+import liquibase.Liquibase;
+import liquibase.database.Database;
+import liquibase.database.DatabaseFactory;
+import liquibase.database.jvm.JdbcConnection;
+import liquibase.exception.LiquibaseException;
+import liquibase.resource.ClassLoaderResourceAccessor;
 
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.URL;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.InputMismatchException;
+import java.util.Properties;
 import java.util.Scanner;
 
 public class Controller {
-    static private Stage stage = Stage.AUTH;
-    static private User curUser;
-    static private Scanner sc = new Scanner(System.in);
+    private Stage stage;
+    private User curUser;
+    private Scanner sc;
+
+    private AuthService authService;
+    private AuditService auditService;
+    private UsersService usersService;
+    private CarManageService carManageService;
+    private OrderService orderService;
+
+    public Controller() {
+        migrate();
+        init();
+    }
+
+    private void init() {
+        stage = Stage.AUTH;
+        curUser = null;
+        sc = new Scanner(System.in);
+
+        authService = new AuthService();
+        auditService = new AuditService();
+        usersService = new UsersService();
+        carManageService = new CarManageService();
+        orderService = new OrderService();
+    }
+
+    private void migrate() {
+        URL fileUrl = ConnectionPool.class.getClassLoader().getResource("db.properties");
+
+        try (
+                FileInputStream fis = new FileInputStream(fileUrl.getFile());
+                Connection c = ConnectionPool.getDataSource().getConnection();
+                Statement statement = c.createStatement()
+        ) {
+            Properties properties = new Properties();
+            properties.load(fis);
+            String defaultSchema = properties.getProperty("liquibase.schema.default");
+            String serviceSchema = properties.getProperty("liquibase.schema.service");
+            String path = properties.getProperty("liquibase.changelog.path");
+
+            statement.execute("create schema if not exists " + defaultSchema);
+            statement.execute("create schema if not exists " + serviceSchema);
+
+            Database database = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(c));
+            database.setDefaultSchemaName(defaultSchema);
+            database.setLiquibaseSchemaName(serviceSchema);
+
+            Liquibase liquibase = new Liquibase(path, new ClassLoaderResourceAccessor(), database);
+            liquibase.update();
+        } catch (LiquibaseException | SQLException | IOException e) {
+            System.err.println("Database migration error: " + e.getMessage());
+        }
+    }
 
 
     public void start() {
         while (!stage.equals(Stage.EXIT)) {
-            if (stage.equals(Stage.AUTH)) auth();
-            else if (stage.equals(Stage.MENU)) menu();
-            else if (stage.equals(Stage.CARS)) cars();
-            else if (stage.equals(Stage.ORDERS)) orders();
-            else if (stage.equals(Stage.USERS)) users();
-            else if (stage.equals(Stage.SEARCH)) search();
-            else if (stage.equals(Stage.AUDIT)) audit();
+            if (stage.equals(Stage.AUTH)) {
+                auth();
+            } else if (stage.equals(Stage.MENU)) {
+                menu();
+            } else if (stage.equals(Stage.CARS)) {
+                cars();
+            } else if (stage.equals(Stage.ORDERS)) {
+                orders();
+            } else if (stage.equals(Stage.USERS)) {
+                users();
+            } else if (stage.equals(Stage.SEARCH)) {
+                search();
+            } else if (stage.equals(Stage.AUDIT)) {
+                audit();
+            }
         }
+        sc.close();
     }
 
     private void auth() {
         System.out.print("\nAuthentication:\n1. Sign Up\n2. Sign In\n0. Exit\n> ");
-        AuthService auth = new AuthService();
-        UsersService usersService = new UsersService();
         String username, password;
 
         try {
@@ -43,18 +114,17 @@ public class Controller {
                     username = readString("Enter username");
                     password = readString("Enter password");
                     String category = readString("Enter user category (client, manager, admin)");
-                    auth.signUp(username, password, UserCategory.valueOf(category.toUpperCase()));
+                    authService.signUp(username, password, UserCategory.valueOf(category.toUpperCase()));
                     System.out.println("Success.");
                     break;
                 case 2:
                     username = readString("Enter username");
                     password = readString("Enter password");
                     if (usersService.checkPassword(username, password)) {
-                        curUser = auth.signIn(username, password);
-                        AuditService.addLog(LogType.INFO, curUser, "Log in.");
+                        curUser = authService.signIn(username, password);
+                        auditService.addLog(LogType.INFO, curUser, "Log in.");
                         stage = Stage.MENU;
                     } else {
-                        AuditService.addLog(LogType.INFO, curUser, "Wrong password.");
                         System.out.println("Invalid password.");
                     }
                     break;
@@ -65,6 +135,9 @@ public class Controller {
             System.out.println(e.getMessage());
         } catch (IllegalArgumentException e) {
             System.out.println("Invalid user category.");
+        } catch (InputMismatchException e) {
+            sc.nextLine();
+            System.out.println("Invalid input.");
         }
     }
 
@@ -105,10 +178,9 @@ public class Controller {
     private void cars() {
         System.out.print("\nCars:\n1. Display all\n2. Add new car\n3. Update car\n4. Remove car\n0. Back\n> ");
 
-        CarManageService carManageService = new CarManageService();
-
         String brand, model, condition;
-        int year, price, index;
+        int year, price;
+        long id;
 
         try {
             int choice = sc.nextInt();
@@ -127,12 +199,12 @@ public class Controller {
                     price = readInteger("Enter price");
                     condition = readString("Enter condition (new, great, used, bad, crashed)");
                     carManageService.addCar(brand, model, year, price, CarCondition.valueOf(condition.toUpperCase()));
-                    AuditService.addLog(LogType.INFO, curUser, "Added new car.");
+                    auditService.addLog(LogType.INFO, curUser, "Added new car.");
                     break;
                 case 3:
                     if (!isManagerOrHigher()) throw new IOException("You have no access to this.");
-                    index = readInteger("Enter car index");
-                    Car car = carManageService.getCar(index);
+                    id = readInteger("Enter car id");
+                    Car car = carManageService.getCar(id);
                     brand = readString("Enter brand or -1 to skip");
                     model = readString("Enter model or -1 to skip");
                     year = readInteger("Enter year or -1 to skip");
@@ -145,28 +217,30 @@ public class Controller {
                     if (price != -1) car.setPrice(price);
                     if (!"-1".equals(condition)) car.setCondition(CarCondition.valueOf(condition.toUpperCase()));
 
-                    carManageService.updateCar(index, car);
-                    AuditService.addLog(LogType.INFO, curUser, "Update car info.");
+                    carManageService.updateCar(car);
+                    auditService.addLog(LogType.INFO, curUser, "Update car info.");
                     break;
                 case 4:
                     if (!isManagerOrHigher()) throw new IOException("You have no access to this.");
-                    index = readInteger("Enter car index");
-                    carManageService.removeCar(index);
-                    AuditService.addLog(LogType.INFO, curUser, "Remove car from list.");
+                    id = readInteger("Enter car id");
+                    carManageService.removeCar(id);
+                    auditService.addLog(LogType.INFO, curUser, "Remove car from list.");
                     break;
 
             }
         } catch (IOException e) {
-            AuditService.addLog(LogType.WARN, curUser, "Cars menu warning.");
+            auditService.addLog(LogType.WARN, curUser, "Cars menu warning.");
             System.out.println(e.getMessage());
+        } catch (InputMismatchException e) {
+            sc.nextLine();
+            System.out.println("Invalid input.");
         }
     }
 
     private void orders() {
         System.out.print("\nOrders:\n1. New buy order\n2. New service order\n3. Display all\n4. Change state\n0. Back\n> ");
-        OrderService orderService = new OrderService();
-        CarManageService carManageService = new CarManageService();
-        int index;
+
+        long id;
         try {
             int choice = sc.nextInt();
             switch (choice) {
@@ -174,40 +248,41 @@ public class Controller {
                     stage = Stage.MENU;
                     break;
                 case 1:
-                    index = readInteger("Enter car index");
-                    orderService.addBuyOrder(curUser, carManageService.getCar(index));
-                    AuditService.addLog(LogType.INFO, curUser, "New buy order.");
+                    id = readInteger("Enter car id");
+                    orderService.addBuyOrder(curUser.getId(), id);
+                    auditService.addLog(LogType.INFO, curUser, "New buy order.");
                     break;
                 case 2:
-                    index = readInteger("Enter car index");
-                    orderService.addServiceOrder(curUser, carManageService.getCar(index));
-                    AuditService.addLog(LogType.INFO, curUser, "New service order.");
+                    id = readInteger("Enter car id");
+                    orderService.addServiceOrder(curUser.getId(), id);
+                    auditService.addLog(LogType.INFO, curUser, "New service order.");
                     break;
                 case 3:
                     if (!isManagerOrHigher()) throw new IOException("You have no access to this.");
                     orderService.displayOrders();
-                    AuditService.addLog(LogType.INFO, curUser, "Display all orders.");
+                    auditService.addLog(LogType.INFO, curUser, "Display all orders.");
                     break;
                 case 4:
                     if (!isManagerOrHigher()) throw new IOException("You have no access to this.");
-                    index = readInteger("Enter order index");
+                    id = readInteger("Enter order id");
                     String state = readString("Enter order state (created, progress, declined)");
-                    orderService.setOrderState(index, OrderState.valueOf(state.toUpperCase()));
-                    AuditService.addLog(LogType.INFO, curUser, "Changed order state.");
+                    orderService.setOrderState(id, OrderState.valueOf(state.toUpperCase()));
+                    auditService.addLog(LogType.INFO, curUser, "Changed order state.");
                     break;
                 default:
                     break;
             }
         } catch (IOException e) {
-            AuditService.addLog(LogType.WARN, curUser, "Orders menu warning.");
+            auditService.addLog(LogType.WARN, curUser, "Orders menu warning.");
             System.out.println(e.getMessage());
+        } catch (InputMismatchException e) {
+            sc.nextLine();
+            System.out.println("Invalid input.");
         }
     }
 
     private void users() {
-        System.out.print("\nUsers:\n1. Display all\n2. Display ordered by category" +
-                "\n3. Display ordered by name\n4. Update user\n0. Back\n> ");
-        UsersService usersService = new UsersService();
+        System.out.print("\nUsers:\n1. Display all\n2. Display ordered by category" + "\n3. Display ordered by name\n4. Update user\n0. Back\n> ");
 
         try {
             int choice = sc.nextInt();
@@ -217,15 +292,15 @@ public class Controller {
                     break;
                 case 1:
                     usersService.displayUsers();
-                    AuditService.addLog(LogType.INFO, curUser, "Display all users.");
+                    auditService.addLog(LogType.INFO, curUser, "Display all users.");
                     break;
                 case 2:
                     usersService.displayOrderedByCategory();
-                    AuditService.addLog(LogType.INFO, curUser, "Display all users ordered by category.");
+                    auditService.addLog(LogType.INFO, curUser, "Display all users ordered by category.");
                     break;
                 case 3:
                     usersService.displayOrderedByName();
-                    AuditService.addLog(LogType.INFO, curUser, "Display all users ordered by name.");
+                    auditService.addLog(LogType.INFO, curUser, "Display all users ordered by name.");
                     break;
                 case 4:
                     String name = readString("Enter username");
@@ -237,22 +312,22 @@ public class Controller {
                     if (!"-1".equals(category)) user.setCategory(UserCategory.valueOf(category));
 
                     usersService.updateUser(user);
-                    AuditService.addLog(LogType.INFO, curUser, "Update user.");;
+                    auditService.addLog(LogType.INFO, curUser, "Update user.");
                     break;
                 default:
                     break;
             }
         } catch (IOException e) {
-            AuditService.addLog(LogType.WARN, curUser, "Users menu warning.");
+            auditService.addLog(LogType.WARN, curUser, "Users menu warning.");
             System.out.println(e.getMessage());
+        } catch (InputMismatchException e) {
+            sc.nextLine();
+            System.out.println("Invalid input.");
         }
     }
 
     private void search() {
-        System.out.print("\nUsers:\n1. Cars by brand\n2. Cars by model" +
-                "\n3. Cars by year\n4. Cars by price\n5. Orders by user" +
-                "\n6. Orders by car\n7. Orders by state\n0. Back\n> ");
-        FilterService filterService = new FilterService();
+        System.out.print("\nUsers:\n1. Cars by brand\n2. Cars by model" + "\n3. Cars by year\n4. Cars by price\n5. Filter by user" + "\n6. Filter by car\n7. Filter by state\n0. Back\n> ");
 
         try {
             int choice = sc.nextInt();
@@ -262,55 +337,57 @@ public class Controller {
                     break;
                 case 1:
                     String brand = readString("Enter brand");
-                    filterService.carsByBrand(brand);
-                    AuditService.addLog(LogType.INFO, curUser, "Search cars by brand.");
+                    carManageService.displayCarsByBrand(brand);
+                    auditService.addLog(LogType.INFO, curUser, "Search cars by brand.");
                     break;
                 case 2:
                     String model = readString("Enter model");
-                    filterService.carsByModel(model);
-                    AuditService.addLog(LogType.INFO, curUser, "Search cars by model.");
+                    carManageService.displayCarsByModel(model);
+                    auditService.addLog(LogType.INFO, curUser, "Search cars by model.");
                     break;
                 case 3:
                     int year = readInteger("Enter year");
-                    filterService.carsByYear(year);
-                    AuditService.addLog(LogType.INFO, curUser, "Search cars by year.");
+                    carManageService.displayCarsByYear(year);
+                    auditService.addLog(LogType.INFO, curUser, "Search cars by year.");
                     break;
                 case 4:
                     int price = readInteger("Enter price");
-                    filterService.carsByPrice(price);
-                    AuditService.addLog(LogType.INFO, curUser, "Search cars by price.");
+                    carManageService.displayCarsByPrice(price);
+                    auditService.addLog(LogType.INFO, curUser, "Search cars by price.");
                     break;
                 case 5:
                     UsersService usersService = new UsersService();
                     String name = readString("Enter username");
-                    filterService.ordersByUser(usersService.getUser(name));
-                    AuditService.addLog(LogType.INFO, curUser, "Search orders by user.");
+                    orderService.filterByUser(usersService.getUser(name));
+                    auditService.addLog(LogType.INFO, curUser, "Search orders by user.");
                     break;
                 case 6:
                     CarManageService carManageService = new CarManageService();
-                    int index = readInteger("Enter car index");
-                    filterService.ordersByCar(carManageService.getCar(index));
-                    AuditService.addLog(LogType.INFO, curUser, "Search orders by car.");
+                    int id = readInteger("Enter car id");
+                    orderService.filterByCar(carManageService.getCar(id));
+                    auditService.addLog(LogType.INFO, curUser, "Search orders by car.");
                     break;
                 case 7:
                     String state = readString("Enter order state");
-                    filterService.orderByState(OrderState.valueOf(state));
-                    AuditService.addLog(LogType.INFO, curUser, "Search orders by state.");
+                    orderService.filterByState(OrderState.valueOf(state));
+                    auditService.addLog(LogType.INFO, curUser, "Search orders by state.");
                     break;
                 default:
                     break;
             }
         } catch (IOException e) {
-            AuditService.addLog(LogType.WARN, curUser, "Search menu warning.");
+            auditService.addLog(LogType.WARN, curUser, "Search menu warning.");
             System.out.println(e.getMessage());
+        } catch (InputMismatchException e) {
+            sc.nextLine();
+            System.out.println("Invalid input.");
         }
     }
 
     private void audit() {
         System.out.print("\nAudit:\n1. Display all logs\n2. Logs by date\n3. Logs by user\n4. Logs by action\n5. Save to file\n0. Back\n> ");
-        AuditService auditService = new AuditService();
-        ArrayList<String> logs;
 
+        ArrayList<String> logs;
         try {
             int choice = sc.nextInt();
             switch (choice) {
@@ -324,37 +401,38 @@ public class Controller {
                     String date = readString("Enter date");
                     logs = auditService.logsByDate(date);
                     auditService.display(logs);
-                    AuditService.addLog(LogType.INFO, curUser, "Display logs by date.");
+                    auditService.addLog(LogType.INFO, curUser, "Display logs by date.");
                     break;
                 case 3:
                     String username = readString("Enter username");
                     logs = auditService.logsByUser(username);
                     auditService.display(logs);
-                    AuditService.addLog(LogType.INFO, curUser, "Display logs by user.");
+                    auditService.addLog(LogType.INFO, curUser, "Display logs by user.");
                 case 4:
                     String action = readString("Enter action");
                     logs = auditService.logsByAction(action.toUpperCase());
                     auditService.display(logs);
-                    AuditService.addLog(LogType.INFO, curUser, "Display logs by action.");
+                    auditService.addLog(LogType.INFO, curUser, "Display logs by action.");
                     break;
                 case 5:
-                    AuditService.addLog(LogType.INFO, curUser, "Saved log to file.");
+                    auditService.addLog(LogType.INFO, curUser, "Saved log to file.");
                     auditService.save();
                 default:
                     break;
             }
-        } catch (IOException e) {
-            AuditService.addLog(LogType.WARN, curUser, "Audit menu warning.");
-            System.out.println(e.getMessage());
+        } catch (InputMismatchException e) {
+            sc.nextLine();
+            System.out.println("Invalid input.");
         }
     }
 
     private boolean isManagerOrHigher() {
-        return curUser.getCategory().equals(UserCategory.ADMIN) || curUser.getCategory().equals(UserCategory.MANAGER);
+        return curUser != null &&
+                (curUser.getCategory().equals(UserCategory.ADMIN) || curUser.getCategory().equals(UserCategory.MANAGER));
     }
 
     private boolean isAdmin() {
-        return curUser.getCategory().equals(UserCategory.ADMIN);
+        return curUser != null && curUser.getCategory().equals(UserCategory.ADMIN);
     }
 
     private String readString(String msg) {
@@ -365,5 +443,10 @@ public class Controller {
     private int readInteger(String msg) {
         System.out.print(msg + ": ");
         return sc.nextInt();
+    }
+
+    private long readLong(String msg) {
+        System.out.print(msg + ": ");
+        return sc.nextLong();
     }
 }

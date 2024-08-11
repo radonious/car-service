@@ -4,16 +4,15 @@ import edu.carservice.model.User;
 import edu.carservice.util.UserCategory;
 
 import java.io.IOException;
+import java.util.UUID;
 
 public class AuthService {
 
     UsersService usersService = new UsersService();
 
     public void signUp(String name, String password, UserCategory category) throws IOException {
-        if (usersService.isUser(name))
-            throw new IOException("User with this name already exists.");;
-
-        usersService.addUser(new User(name, password, category));
+        if (usersService.isUser(name)) throw new IOException("User with this name already exists.");
+        usersService.addUser(new User(null, name, password, category));
     }
 
     public User signIn(String name, String password) throws IOException {
