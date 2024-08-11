@@ -1,0 +1,5 @@
+username,password,category
+admin,admin,ADMIN
+123,1234,ADMIN
+man,pass,MANAGER
+cli,1234,CLIENT
