@@ -1,0 +1,4 @@
+user_id,car_id,state,category
+1,2,CREATED,BUY
+3,1,DECLINED,SERVICE
+4,5,PROGRESS,BUY
