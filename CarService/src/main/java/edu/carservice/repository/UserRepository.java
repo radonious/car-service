@@ -23,11 +23,9 @@ public class UserRepository implements CrudRepository<User> {
     public long count() {
         long result = 0;
         String SQL_QUERY = "select COUNT(*) as result from car_service.user;";
-        try (
-                Connection con = dataSource.getConnection();
-                PreparedStatement pst = con.prepareStatement(SQL_QUERY);
-                ResultSet rs = pst.executeQuery();
-        ) {
+        try (Connection con = dataSource.getConnection()) {
+            PreparedStatement pst = con.prepareStatement(SQL_QUERY);
+            ResultSet rs = pst.executeQuery();
             if (rs.next()) {
                 result = rs.getLong("result");
             }
@@ -106,7 +104,6 @@ public class UserRepository implements CrudRepository<User> {
             pst.setString(1, obj.getName());
             pst.setString(2, obj.getPassword());
             pst.setString(3, obj.getCategory().toString());
-            pst.executeUpdate();
 
             int rowsAffected = pst.executeUpdate();
 
