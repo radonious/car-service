@@ -17,10 +17,10 @@
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="user_id" type="INTEGER">
-                <constraints nullable="false" foreignKeyName="fk_user_id" references="car_service.user(id)"/>
+                <constraints nullable="false" foreignKeyName="fk_user_id" references="car_service.user(id)" deleteCascade="true"/>
             </column>
             <column name="car_id" type="INTEGER">
-                <constraints nullable="false" foreignKeyName="fk_car_id" references="car_service.car(id)"/>
+                <constraints nullable="false" foreignKeyName="fk_car_id" references="car_service.car(id)" deleteCascade="true"/>
             </column>
             <column name="state" type="VARCHAR(255)">
                 <constraints nullable="false"/>

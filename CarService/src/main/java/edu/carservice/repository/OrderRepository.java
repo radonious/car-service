@@ -104,7 +104,7 @@ public class OrderRepository implements CrudRepository<Order> {
 
     @Override
     public void save(Order obj) {
-        String SQL_QUERY = "insert into car_service.car values (nextval('car_service.order_id_seq'), ?, ?, ?, ?, ?);";
+        String SQL_QUERY = "insert into car_service.order values (nextval('car_service.order_id_seq'), ?, ?, ?, ?);";
         try (Connection con = dataSource.getConnection()) {
             PreparedStatement pst = con.prepareStatement(SQL_QUERY, PreparedStatement.RETURN_GENERATED_KEYS);
             pst.setLong(1, obj.getUserId());

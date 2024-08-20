@@ -119,7 +119,7 @@ public class CarRepository implements CrudRepository<Car> {
 
     @Override
     public void deleteById(long id) {
-        String SQL_QUERY = "delete from car_service.car where id = ?;";
+        String SQL_QUERY = "delete  from car_service.car where id = ?;";
         try (Connection con = dataSource.getConnection()) {
             PreparedStatement pst = con.prepareStatement(SQL_QUERY);
             pst.setLong(1, id);

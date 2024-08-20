@@ -1,5 +1,6 @@
 package edu.carservice.service;
 
+import edu.carservice.annotations.Loggable;
 import edu.carservice.model.Car;
 import edu.carservice.model.Order;
 import edu.carservice.model.User;
@@ -11,25 +12,18 @@ import edu.carservice.util.OrderState;
 import java.io.IOException;
 import java.util.List;
 
+@Loggable
 public class OrderService {
 
     OrderRepository orderRepository = new OrderRepository(ConnectionPool.getDataSource());
 
-    public void addBuyOrder(long userId, long carId) throws IOException {
+    public void addOrder(long userId, long carId, OrderCategory category) throws IOException {
         if (orderRepository.existsByCar(carId)) throw new IOException("Car already ordered.");
-        orderRepository.save(new Order(null, userId, carId, OrderState.CREATED, OrderCategory.BUY));
+        orderRepository.save(new Order(null, userId, carId, OrderState.CREATED, category));
     }
 
-    public void addServiceOrder(long userId, long carId) throws IOException {
-        if (orderRepository.existsByCar(carId)) throw new IOException("Car already ordered.");
-        orderRepository.save(new Order(null, userId, carId, OrderState.CREATED, OrderCategory.SERVICE));
-    }
-
-    public void displayOrders() {
-        orderRepository.findAll().forEach(System.out::println);
-    }
-
-    public Order getOrder(long id) {
+    public Order getOrder(long id) throws IOException {
+        if (!orderRepository.existsById(id)) throw new IOException("No such order id");
         return orderRepository.findById(id);
     }
 
@@ -37,10 +31,24 @@ public class OrderService {
         return orderRepository.findAll();
     }
 
+    public void removeOrder(long id) throws IOException {
+        if (!orderRepository.existsById(id)) throw new IOException("No such order id");
+        orderRepository.deleteById(id);
+    }
+
+    public void updateOrder(Order order) throws IOException {
+        if (!orderRepository.existsById(order.getId())) throw new IOException("No such order id");
+        orderRepository.update(order);
+    }
+
     public void setOrderState(long id, OrderState state) {
         Order order = orderRepository.findById(id);
         order.setState(state);
         orderRepository.update(order);
+    }
+
+    public void displayOrders() {
+        orderRepository.findAll().forEach(System.out::println);
     }
 
     public void filterByUser(User user) {
