@@ -8,8 +8,10 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import edu.carservice.annotations.Loggable;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.stereotype.Service;
 
 @Loggable
+@Service
 public class AuthService {
     public static boolean checkToken(String token) throws JWTVerificationException {
         Algorithm algorithm = Algorithm.HMAC384("secret");

@@ -5,17 +5,26 @@ import edu.carservice.model.Car;
 import edu.carservice.model.Order;
 import edu.carservice.model.User;
 import edu.carservice.repository.OrderRepository;
-import edu.carservice.util.ConnectionPool;
 import edu.carservice.util.OrderCategory;
 import edu.carservice.util.OrderState;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.List;
 
 @Loggable
+@Service
 public class OrderService {
 
-    OrderRepository orderRepository = new OrderRepository(ConnectionPool.getDataSource());
+
+
+    private OrderRepository orderRepository;
+
+    @Autowired
+    public OrderService(OrderRepository orderRepository) {
+        this.orderRepository = orderRepository;
+    }
 
     public void addOrder(long userId, long carId, OrderCategory category) throws IOException {
         if (orderRepository.existsByCar(carId)) throw new IOException("Car already ordered.");

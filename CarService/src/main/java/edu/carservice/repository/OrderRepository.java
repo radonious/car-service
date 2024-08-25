@@ -3,6 +3,8 @@ package edu.carservice.repository;
 import edu.carservice.model.Order;
 import edu.carservice.util.OrderCategory;
 import edu.carservice.util.OrderState;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -12,10 +14,12 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+@Repository
 public class OrderRepository implements CrudRepository<Order> {
 
-    private DataSource dataSource;
+    private final DataSource dataSource;
 
+    @Autowired
     public OrderRepository(DataSource ds) {
         dataSource = ds;
     }

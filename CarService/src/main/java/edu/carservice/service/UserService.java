@@ -3,7 +3,8 @@ package edu.carservice.service;
 import edu.carservice.annotations.Loggable;
 import edu.carservice.model.User;
 import edu.carservice.repository.UserRepository;
-import edu.carservice.util.ConnectionPool;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -11,9 +12,15 @@ import java.util.Comparator;
 import java.util.List;
 
 @Loggable
+@Service
 public class UserService {
 
-    UserRepository userRepository = new UserRepository(ConnectionPool.getDataSource());
+    UserRepository userRepository;
+
+    @Autowired
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     public void addUser(User user) throws IOException {
         if (isUser(user.getName())) throw new IOException("User with this name already exist.");

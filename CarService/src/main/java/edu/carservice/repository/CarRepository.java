@@ -2,6 +2,8 @@ package edu.carservice.repository;
 
 import edu.carservice.model.Car;
 import edu.carservice.util.CarCondition;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -11,10 +13,12 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+@Repository
 public class CarRepository implements CrudRepository<Car> {
 
-    private DataSource dataSource;
+    private final DataSource dataSource;
 
+    @Autowired
     public CarRepository(DataSource ds) {
         dataSource = ds;
     }

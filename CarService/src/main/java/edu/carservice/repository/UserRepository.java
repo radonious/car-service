@@ -2,6 +2,8 @@ package edu.carservice.repository;
 
 import edu.carservice.model.User;
 import edu.carservice.util.UserCategory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -11,10 +13,12 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+@Repository
 public class UserRepository implements CrudRepository<User> {
 
-    private DataSource dataSource;
+    private final DataSource dataSource;
 
+    @Autowired
     public UserRepository(DataSource ds) {
         dataSource = ds;
     }
