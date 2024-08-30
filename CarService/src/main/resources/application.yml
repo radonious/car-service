@@ -1,0 +1,10 @@
+db:
+  url: "jdbc:postgresql://localhost:5432/postgres"
+  user: "some_user"
+  password: "some_password"
+  driver: "org.postgresql.ds.PGSimpleDataSource"
+
+liquibase:
+  changelog.path: "db/changelog/main-changelog.xml"
+  schema.default: "car_service"
+  schema.service: "liquibase"

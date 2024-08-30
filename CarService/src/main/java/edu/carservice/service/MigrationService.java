@@ -1,37 +1,48 @@
 package edu.carservice.service;
 
 import edu.carservice.annotations.Loggable;
-import edu.carservice.util.ConnectionPool;
+
+import jakarta.annotation.PostConstruct;
 import liquibase.Liquibase;
 import liquibase.database.Database;
 import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.exception.LiquibaseException;
 import liquibase.resource.ClassLoaderResourceAccessor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.stereotype.Service;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.net.URL;
+import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Properties;
 
 @Loggable
+@Service
+@PropertySource("classpath:/application.properties")
 public class MigrationService {
-    public static void migrate() {
-        URL fileUrl = ConnectionPool.class.getClassLoader().getResource("db.properties");
 
+    DataSource dataSource;
+
+    @Value("${liquibase.schema.default}") private String defaultSchema;
+
+    @Value("${liquibase.schema.service}") private String serviceSchema;
+
+    @Value("${liquibase.changelog.path}") private String path;
+
+    @Autowired
+    public MigrationService(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
+
+    @PostConstruct
+    public void migrate() {
         try (
-                FileInputStream fis = new FileInputStream(fileUrl.getFile());
-                Connection c = ConnectionPool.getDataSource().getConnection();
+                Connection c = dataSource.getConnection();
                 Statement statement = c.createStatement()
         ) {
-            Properties properties = new Properties();
-            properties.load(fis);
-            String defaultSchema = properties.getProperty("liquibase.schema.default");
-            String serviceSchema = properties.getProperty("liquibase.schema.service");
-            String path = properties.getProperty("liquibase.changelog.path");
 
             statement.execute("create schema if not exists " + defaultSchema);
             statement.execute("create schema if not exists " + serviceSchema);
@@ -42,7 +53,7 @@ public class MigrationService {
 
             Liquibase liquibase = new Liquibase(path, new ClassLoaderResourceAccessor(), database);
             liquibase.update();
-        } catch (LiquibaseException | SQLException | IOException e) {
+        } catch (LiquibaseException | SQLException e) {
             System.err.println("Database migration error: " + e.getMessage());
         }
     }

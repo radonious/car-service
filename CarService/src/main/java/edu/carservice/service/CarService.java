@@ -4,15 +4,22 @@ import edu.carservice.annotations.Loggable;
 import edu.carservice.model.Car;
 import edu.carservice.repository.CarRepository;
 import edu.carservice.util.CarCondition;
-import edu.carservice.util.ConnectionPool;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.InvalidPropertiesFormatException;
 import java.util.List;
 
 @Loggable
+@Service
 public class CarService {
-    CarRepository carRepository = new CarRepository(ConnectionPool.getDataSource());
+    CarRepository carRepository;
+
+    @Autowired
+    public CarService(CarRepository repository) {
+        carRepository = repository;
+    }
 
     public List<Car> getCars() {
         return carRepository.findAll();
