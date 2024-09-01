@@ -12,57 +12,16 @@ import org.springframework.context.annotation.*;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
-import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-import springfox.documentation.builders.PathSelectors;
-import springfox.documentation.builders.RequestHandlerSelectors;
-import springfox.documentation.spi.DocumentationType;
-import springfox.documentation.spring.web.plugins.Docket;
-import springfox.documentation.swagger.web.UiConfiguration;
-import springfox.documentation.swagger.web.UiConfigurationBuilder;
-import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
 import javax.sql.DataSource;
 import java.util.List;
 
 @Configuration
 @EnableWebMvc
-@EnableSwagger2
+@EnableAspectJAutoProxy
 @PropertySource("classpath:/application.properties")
 public class WebAppConfig implements WebMvcConfigurer {
-
-
-
-    @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("swagger-ui.html")
-                .addResourceLocations("classpath:/META-INF/resources/");
-
-        registry.addResourceHandler("/webjars/**")
-                .addResourceLocations("classpath:/META-INF/resources/webjars/");
-    }
-
-    @Bean
-    public Docket api() {
-        return new Docket(DocumentationType.SWAGGER_2)
-                .select()
-                .apis(RequestHandlerSelectors.any())
-                .paths(PathSelectors.any())
-                .build();
-    }
-
-    @Bean
-    public UiConfiguration uiConfiguration() {
-        return UiConfigurationBuilder
-                .builder()
-                .defaultModelsExpandDepth(-1)
-                .build();
-    }
-
-    @Override
-    public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
-        converters.add(new MappingJackson2HttpMessageConverter());
-    }
 
     @Bean
     public AuthService authService() {
@@ -99,13 +58,13 @@ public class WebAppConfig implements WebMvcConfigurer {
         return new UserRepository(dataSource());
     }
 
-    @Value("${db.url}") private String url;
+    @Value("${spring.datasource.url}") private String url;
 
-    @Value("${db.user}") private String user;
+    @Value("${spring.datasource.username}") private String user;
 
-    @Value("${db.password}") private String password;
+    @Value("${spring.datasource.password}") private String password;
 
-    @Value("${db.driver}") private String driverName;
+    @Value("${spring.datasource.driver-class-name}") private String driverName;
 
     @Bean
     public DataSource dataSource() {

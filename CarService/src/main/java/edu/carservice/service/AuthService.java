@@ -6,7 +6,7 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTCreationException;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import edu.carservice.annotations.Loggable;
+import edu.starter.annotations.Loggable;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Service;
 

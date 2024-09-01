@@ -1,6 +1,6 @@
 package edu.carservice.service;
 
-import edu.carservice.annotations.Loggable;
+import edu.starter.annotations.Loggable;
 import edu.carservice.model.Car;
 import edu.carservice.model.Order;
 import edu.carservice.model.User;

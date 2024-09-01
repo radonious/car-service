@@ -1,6 +1,6 @@
 package edu.carservice.service;
 
-import edu.carservice.annotations.Loggable;
+import edu.starter.annotations.Loggable;
 import edu.carservice.model.User;
 import edu.carservice.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
