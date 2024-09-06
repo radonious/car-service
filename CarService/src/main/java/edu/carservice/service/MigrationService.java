@@ -1,6 +1,6 @@
 package edu.carservice.service;
 
-import edu.carservice.annotations.Loggable;
+import edu.starter.annotations.Loggable;
 
 import jakarta.annotation.PostConstruct;
 import liquibase.Liquibase;
@@ -26,11 +26,11 @@ public class MigrationService {
 
     DataSource dataSource;
 
-    @Value("${liquibase.schema.default}") private String defaultSchema;
+    @Value("${spring.liquibase.default-schema}") private String defaultSchema;
 
-    @Value("${liquibase.schema.service}") private String serviceSchema;
+    @Value("${spring.liquibase.liquibase-schema}") private String serviceSchema;
 
-    @Value("${liquibase.changelog.path}") private String path;
+    @Value("${spring.liquibase.change-log}") private String path;
 
     @Autowired
     public MigrationService(DataSource dataSource) {

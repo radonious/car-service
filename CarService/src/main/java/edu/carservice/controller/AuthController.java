@@ -2,6 +2,7 @@ package edu.carservice.controller;
 
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import edu.carservice.model.User;
@@ -19,7 +20,6 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping(path = "/auth")
 public class AuthController {
-
     private ObjectMapper mapper;
     private UserService userService;
     private AuthService authService;
@@ -31,12 +31,13 @@ public class AuthController {
         this.mapper = mapper;
     }
 
-    @RequestMapping(method = RequestMethod.POST)
+    @PostMapping
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
         resp.setContentType("application/json");
         try {
             String body = req.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
             User user = mapper.readValue(body, User.class);
+            if (user == null) throw new IOException("invalid body");
             boolean isValid = userService.checkPassword(user.getName(), user.getPassword());
             if (isValid) {
                 String token = authService.createToken();

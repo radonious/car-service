@@ -1,0 +1,3 @@
+edu\starter\annotations\Loggable.class
+edu\starter\aspect\LoggableAspect.class
+edu\starter\config\StarterAspectConfiguration.class
